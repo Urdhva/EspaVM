@@ -72,15 +72,37 @@ enum Opcodes
 
 enum Condition_Flags
 {
+    //(n << k): shift 'n' by 'k' bits
     FL_POS = 1 << 0,    //P
-    FL_ZRO = 1 << 1,    //Z
-    FL_NEG = 1 << 2,    //N
+    FL_ZRO = 1 << 1,    //Z     note: translates to "string is not null" in bash
+    FL_NEG = 1 << 2,    //N     note: translates to "string is null" in bash
 };
 
 //registors will be stored in an array:
+//basically short unsigned int
+//r_count is the max size of the registry
 __UINT16_TYPE__ reg[R_COUNT];
 
 int main()
 {   
+
+    /*
+        Load Arguments
+        Setup
+    */
+
+    //registry number 10 is storingn condition flag zro (1 << 1)
+    reg[R_COND] = FL_ZRO;
+
+    //this is the default starting position
+    enum { PC_START = 0x3000};  //hexadecimal
+    reg[R_PC] = PC_START;        //program counter points to default starting position
+
+    int running = 1;
+
+    while(running)
+    {
+        /*Fetch*/
         
+    }
 }
