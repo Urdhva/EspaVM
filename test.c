@@ -83,7 +83,7 @@ void update_flags(uint16_t r)
     if(reg[r] == 0){
         reg[R_COND] = FL_ZRO;
     }
-    else if (reg[r] >> 15){     //1 is the left most bit - we move the code by 15 bits to get the first bit
+    else if (reg[r] >> 15){     //1 is the left most bit - we move the code by 15 bits to get the MSB
         reg[R_COND] = FL_NEG;
     }
     else{
@@ -140,6 +140,8 @@ void add(uint16_t instr)
         //we basically take the first three bits (which give us the location of the destinatin register)
         reg[r0] = reg[r1] + reg[r2];
     }
+
+    update_flags(r0);
 }
 
 
@@ -148,8 +150,9 @@ void add(uint16_t instr)
 
 
 
-//---------------------------------------------------------------------------------------//
 
+//---------------------------------------------------------------------------------------//
+//Instructions end here
 
 
 //refer contrl flow screeny for order of functions and loops
