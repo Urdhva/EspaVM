@@ -91,6 +91,11 @@ void update_flags(uint16_t r)
     }
 }
 
+//registors will be stored in an array:
+//basically short unsigned int
+//r_count is the max size of the registry
+uint16_t reg[R_COUNT];
+
 
 // ---> SIGN EXTEND
     //basically add 0s to +ve numbers and 1s to -ve numbers
@@ -118,10 +123,23 @@ void add(uint16_t instr)
     //001, 010, 110, etc etc
 
     //first operand
+    //extract first three bits from 6th bit
     uint16_t r1 = (instr >> 6) & 0x7;
 
     //check whether we are in immediate mode
-    uint16_t imm_flag = (instr >> 5) & 0x7;
+    uint16_t imm_flag = (instr >> 5) & 0x1;
+
+    if(imm_flag)
+    {
+        uint16_t imm5 = sign_extend(instr & 0x1F, 5);
+        reg[r0] = reg[r1] + imm5;
+    }
+    else
+    {
+        uint16_t r2 = instr & 0x7;
+        //we basically take the first three bits (which give us the location of the destinatin register)
+        reg[r0] = reg[r1] + reg[r2];
+    }
 }
 
 
@@ -132,10 +150,7 @@ void add(uint16_t instr)
 
 //---------------------------------------------------------------------------------------//
 
-//registors will be stored in an array:
-//basically short unsigned int
-//r_count is the max size of the registry
-uint16_t reg[R_COUNT];
+
 
 //refer contrl flow screeny for order of functions and loops
 // '--->' indicates a snippet defined by the tutorial
