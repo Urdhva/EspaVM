@@ -31,7 +31,6 @@ uint16_t check_key()
     return WaitForSingleObject(hStdin, 1000) == WAIT_OBJECT_0 && _kbhit();
 }
 
-
 //unsigned integer of 16 bits
 uint16_t memory[MEMORY_MAX];
 
@@ -53,7 +52,7 @@ enum Registors
 enum Opcodes
 {
     OP_BR = 0,      //branch
-    OP_ADD,         //ADD
+    OP_ADD,         //ADD       done
     OP_LD,          //load
     OP_ST,          //store
     OP_JSR,         //jump registor
@@ -62,7 +61,7 @@ enum Opcodes
     OP_STR,         //store registor
     OP_RTI,         //unusued
     OP_NOT,         //bitwise not
-    OP_LDI,         //load indirect
+    OP_LDI,         //load indirect     done
     OP_STI,         //store indirect
     OP_JMP,         //jump
     OP_RES,         //reserved (unusued)
@@ -78,6 +77,12 @@ enum Condition_Flags
     FL_NEG = 1 << 2,    //N     note: translates to "string is null" in bash
 };
 
+
+//registors will be stored in an array:
+//basically short unsigned int
+//r_count is the max size of the registry
+uint16_t reg[R_COUNT];
+
 void update_flags(uint16_t r)
 {
     if(reg[r] == 0){
@@ -91,10 +96,7 @@ void update_flags(uint16_t r)
     }
 }
 
-//registors will be stored in an array:
-//basically short unsigned int
-//r_count is the max size of the registry
-uint16_t reg[R_COUNT];
+
 
 
 // ---> SIGN EXTEND
@@ -112,6 +114,26 @@ uint16_t sign_extend(uint16_t x, int bit_count)
 //--------------------------------------------------------------------------------------//
 
 
+//conditional branch
+void branch(uint16_t instr)
+{
+    uint16_t n = (instr >> 11) & 0x1;
+    uint16_t z = (instr >> 10) & 0x1;
+    uint16_t p = (instr >> 9) & 0x1;
+
+    //0xFF is 511 in integer and 1 1111 1111 in binary
+    //basically we are taking only the first 9 bits
+    uint16_t pc_offset = instr && 0xFF;   
+
+    // 0x1FF; 
+
+    if((n && 1) || (z && 1) || (p && 1))
+    {
+
+    }
+}
+
+//add
 void add(uint16_t instr)
 {
     //destination register
@@ -144,9 +166,38 @@ void add(uint16_t instr)
     update_flags(r0);
 }
 
+//load
+void LD(uint16_t instr)
+{
+    //get destination register
+    uint16_t r0 = (instr >> 9) & 0x7;
 
+    uint16_t pc_offset = sign_extend((instr && 0x1FF), 9);
 
+    //we are reading date from (pc + pc_offset) address
+    reg[r0] = mem_read(reg[R_PC] + pc_offset);
+}
 
+//load indirect
+void LDI(uint16_t instr)
+{
+    //get destination register
+    uint16_t r0 = (instr >> 9) & 0x7;
+
+    //PC offset
+    uint16_t pc_offset = sign_extend(instr & 0x1FF, 9);
+
+    //we are reading address from pc + pc_offset
+    //and then we are reading data from that address
+    reg[r0] = mem_read(mem_read(reg[R_PC] + pc_offset));
+    update_flags(r0);
+}
+
+//store 
+void ST(uint16_t instr)
+{
+    
+}
 
 
 
