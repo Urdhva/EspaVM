@@ -52,10 +52,11 @@ enum Registors
 enum Opcodes
 {
     OP_BR = 0,      //branch
-    OP_ADD,         //ADD       done
-    OP_LD,          //load
+    OP_ADD,         //ADD               done
+    OP_LD,          //load              done
     OP_ST,          //store
-    OP_JSR,         //jump registor
+    OP_JSR,         //jump registor 
+                    //or jump to subroutine
     OP_AND,         //bitwsie and
     OP_LDR,         //load registor
     OP_STR,         //store registor
@@ -115,6 +116,7 @@ uint16_t sign_extend(uint16_t x, int bit_count)
 
 
 //conditional branch
+//SELF WRITTEN
 void branch(uint16_t instr)
 {
     uint16_t n = (instr >> 11) & 0x1;
@@ -132,6 +134,7 @@ void branch(uint16_t instr)
 
     }
 }
+
 
 //add
 void add(uint16_t instr)
@@ -167,6 +170,7 @@ void add(uint16_t instr)
 }
 
 //load
+//SELF WRITTEN
 void LD(uint16_t instr)
 {
     //get destination register
@@ -176,6 +180,7 @@ void LD(uint16_t instr)
 
     //we are reading date from (pc + pc_offset) address
     reg[r0] = mem_read(reg[R_PC] + pc_offset);
+    update_flags(r0);
 }
 
 //load indirect
@@ -194,10 +199,33 @@ void LDI(uint16_t instr)
 }
 
 //store 
+//SELF WRITTEN
 void ST(uint16_t instr)
+{
+    //NOT THE DESTINATION REGISTER - register where we need to read required data from
+    uint16_t sr = (instr >> 9) & 0x7;
+
+    //calculating the PC offset
+    uint16_t pc_offset = sign_extend(instr & 0x1FF, 9);
+
+    //this is PC + PC_OFFSET    
+    //this is where we need to store our data that has been read from sr
+    uint16_t rs = reg[R_PC] + pc_offset;
+
+    //so contents of rs are to be overwritten with contents of sr
+    reg[rs] = mem_read(sr);
+    //rs is the destination register hence we update it's update flags.
+    //(or something like that)
+    update_flags(rs);
+}
+
+//jump to subroutine or jump registor (this has two modes)
+void JSR(uint16_t instr)
 {
     
 }
+
+
 
 
 
