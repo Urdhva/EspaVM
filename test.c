@@ -54,7 +54,7 @@ enum Opcodes
     OP_BR = 0,      //branch
     OP_ADD,         //ADD               done
     OP_LD,          //load              done
-    OP_ST,          //store
+    OP_ST,          //store             done
     OP_JSR,         //jump registor 
                     //or jump to subroutine
     OP_AND,         //bitwsie and
