@@ -55,9 +55,9 @@ enum Opcodes
     OP_ADD,         //ADD               done
     OP_LD,          //load              done
     OP_ST,          //store             done
-    OP_JSR,         //jump registor 
+    OP_JSR,         //jump registor     done
                     //or jump to subroutine
-    OP_AND,         //bitwsie and
+    OP_AND,         //bitwsie and       done
     OP_LDR,         //load registor
     OP_STR,         //store registor
     OP_RTI,         //unusued
@@ -220,12 +220,66 @@ void ST(uint16_t instr)
 }
 
 //jump to subroutine or jump registor (this has two modes)
+//SELF WRITTEN
 void JSR(uint16_t instr)
 {
-    
+    //r7 stores the incremented pc
+    //our link back to the calling routine
+    //content of pc is stored in the 7th registry
+    reg[R_R7] = reg[R_PC];
+
+    //pc is then loaded with the address of the first instruction 
+    //of the subroutine
+    //so basically an undconditional jump (all according to what's written in the manual)
+    uint16_t flag = (instr >> 1) & 0x1;
+
+    if(flag){
+        //we then get our base register
+        //this is the address of the base register
+        reg[R_PC] = (instr >> 6) & 0x7;
+    }
+    else{
+        reg[R_PC] = reg[R_PC] + sign_extend(instr & 0x7FF, 11);
+    }
+
+    //I'm not sure if we need to use the update_flag function here
 }
 
+//logical and (duh)
+//SELF WRITTEN 
+void AND(uint16_t instr)
+{
+    //destination registor
+    uint16_t r0 = (instr >> 9) & 0x7;   
+    //source register
+    uint16_t r1 = (instr >> 5) & 0x7;
 
+    //checks mode
+    uint16_t imm_flag = (instr >> 5) & 0x1;
+
+    if(imm_flag)
+    {
+        //immediate addressing mode
+        uint16_t imm5 = sign_extend(instr & 0x1F, 5);
+        //reg[r0] indicates contents of that register
+        reg[r0] = reg[r1] & imm5;
+    }
+    else
+    {
+        uint16_t r2 = instr & 0x7;
+        //i guess we have to do bitwise and?
+        reg[r0] = reg[r1] & reg[r2];
+    }
+
+    update_flags(r0);
+}
+
+//load base + offset (load register)
+//SELF WRITTEN
+void LDR(uint16_t instr)
+{
+
+}
 
 
 
