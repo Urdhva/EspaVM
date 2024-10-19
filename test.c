@@ -58,7 +58,7 @@ enum Opcodes
     OP_JSR,         //jump registor     done
                     //or jump to subroutine
     OP_AND,         //bitwsie and       done
-    OP_LDR,         //load registor
+    OP_LDR,         //load registor     done
     OP_STR,         //store registor
     OP_RTI,         //unusued
     OP_NOT,         //bitwise not
@@ -135,7 +135,6 @@ void branch(uint16_t instr)
     }
 }
 
-
 //add
 void add(uint16_t instr)
 {
@@ -180,21 +179,6 @@ void LD(uint16_t instr)
 
     //we are reading date from (pc + pc_offset) address
     reg[r0] = mem_read(reg[R_PC] + pc_offset);
-    update_flags(r0);
-}
-
-//load indirect
-void LDI(uint16_t instr)
-{
-    //get destination register
-    uint16_t r0 = (instr >> 9) & 0x7;
-
-    //PC offset
-    uint16_t pc_offset = sign_extend(instr & 0x1FF, 9);
-
-    //we are reading address from pc + pc_offset
-    //and then we are reading data from that address
-    reg[r0] = mem_read(mem_read(reg[R_PC] + pc_offset));
     update_flags(r0);
 }
 
@@ -278,7 +262,36 @@ void AND(uint16_t instr)
 //SELF WRITTEN
 void LDR(uint16_t instr)
 {
+    //destination register
+    uint16_t r0 = (instr >> 9) & 0x7;
 
+    uint16_t baseR = (instr >> 6) & 0x7;
+
+    reg[r0] = reg[baseR] + sign_extend(instr & 0x1F, 5);
+
+    update_flags(r0);
+}
+
+//store register (store base + offset)
+//SELF WRITTEN
+void STR(uint16_t instr)
+{
+
+}
+
+//load indirect
+void LDI(uint16_t instr)
+{
+    //get destination register
+    uint16_t r0 = (instr >> 9) & 0x7;
+
+    //PC offset
+    uint16_t pc_offset = sign_extend(instr & 0x1FF, 9);
+
+    //we are reading address from pc + pc_offset
+    //and then we are reading data from that address
+    reg[r0] = mem_read(mem_read(reg[R_PC] + pc_offset));
+    update_flags(r0);
 }
 
 
