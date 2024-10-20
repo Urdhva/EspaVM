@@ -3,7 +3,55 @@
 //TO CONTINUE - Condition Flags
 
 #include <iostream>
+#include <windows.h>
+#include <conio.h>
+#include <cstdint>
 #define MEMORY_MAX (1 << 16)
+
+class ConsoleInputBuffer{//translated code from cpp
+private:
+    HANDLE hStdin;
+    DWORD fdwMode, fdwOldMode;
+
+public:
+    ConsoleInputBuffer() : hStdin(INVALID_HANDLE_VALUE) {}
+
+    void disableInputBuffering() {
+        hStdin = GetStdHandle(STD_INPUT_HANDLE);
+        if (hStdin == INVALID_HANDLE_VALUE) {
+            std::cerr << "Error: Unable to get standard input handle." << std::endl;
+            return;
+        }
+
+        if (!GetConsoleMode(hStdin, &fdwOldMode)) {
+            std::cerr << "Error: Unable to get console mode." << std::endl;
+            return;
+        }
+
+        fdwMode = fdwOldMode & ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT);
+        if (!SetConsoleMode(hStdin, fdwMode)) {
+            std::cerr << "Error: Unable to set console mode." << std::endl;
+            return;
+        }
+
+        if (!FlushConsoleInputBuffer(hStdin)) {
+            std::cerr << "Error: Unable to flush console input buffer." << std::endl;
+        }
+    }
+
+    void restoreInputBuffering() {
+        if (!SetConsoleMode(hStdin, fdwOldMode)) {
+            std::cerr << "Error: Unable to restore console mode." << std::endl;
+        }
+    }
+
+    uint16_t checkKey() {
+        if (WaitForSingleObject(hStdin, 1000) == WAIT_OBJECT_0 && _kbhit()) {
+            return 1; // Key pressed
+        }
+        return 0; // No key pressed
+    }
+};
 
 //basically __UINT16_TYPE__
 short unsigned int memory[MEMORY_MAX];
