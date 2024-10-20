@@ -40,7 +40,7 @@ public:
         }
     }
 
-    static uint16_t checkKey()
+    static short int checkKey()
     {
         return (WaitForSingleObject(hStdin, 1000) == WAIT_OBJECT_0 && _kbhit()) ? 1 : 0;
     }
@@ -61,7 +61,7 @@ DWORD ConsoleBuffer::fdwOldMode = 0;
 //---------------------------------------------------------------------------------------//
 //---------------------------------------------------------------------------------------//
 //---------------------------------------------------------------------------------------//
-uint16_t memory[MEMORY_MAX];
+short unsigned int memory[MEMORY_MAX];
 enum Registors
 {
     R_R0 = 0,
@@ -102,9 +102,9 @@ enum Condition_Flags
     FL_NEG = 1 << 2
 };
 
-uint16_t reg[R_COUNT];
+short unsigned int reg[R_COUNT];
 
-void updateFlags(uint16_t r)
+void updateFlags(short unsigned int r)
 {
     if (reg[r] == 0)
     {
@@ -120,7 +120,7 @@ void updateFlags(uint16_t r)
     }
 }
 
-uint16_t signExtend(uint16_t x, int bitCount)
+short unsigned int signExtend(short unsigned int x, int bitCount)
 {
     if ((x >> (bitCount - 1)) & 1)
     {
@@ -138,12 +138,12 @@ uint16_t signExtend(uint16_t x, int bitCount)
 //---------------------------------------------------------------------------------------//
 //Conditional Branch(updated from Urdhva)
 //---------------------------------------------------------------------------------------//
-void branch(uint16_t instr)
+void branch(short unsigned int instr)
 {
-    uint16_t n = (instr >> 11) & 0x1;
-    uint16_t z = (instr >> 10) & 0x1;
-    uint16_t p = (instr >> 9) & 0x1;
-    uint16_t pcOffset = instr & 0x1FF;
+    short unsigned int n = (instr >> 11) & 0x1;
+    short unsigned int z = (instr >> 10) & 0x1;
+    short unsigned int p = (instr >> 9) & 0x1;
+    short unsigned int pcOffset = instr & 0x1FF;
     if ((n && (reg[R_COND] & FL_NEG)) || (z && (reg[R_COND] & FL_ZRO)) || (p && (reg[R_COND] & FL_POS)))
     {
         reg[R_PC] += signExtend(pcOffset, 9);
@@ -152,19 +152,19 @@ void branch(uint16_t instr)
 //---------------------------------------------------------------------------------------//
 //Add(c)
 //---------------------------------------------------------------------------------------//
-void add(uint16_t instr)
+void add(short unsigned int instr)
 {
-    uint16_t r0 = (instr >> 9) & 0x7;
-    uint16_t r1 = (instr >> 6) & 0x7;
-    uint16_t immFlag = (instr >> 5) & 0x1;
+    short unsigned int r0 = (instr >> 9) & 0x7;
+    short unsigned int r1 = (instr >> 6) & 0x7;
+    short unsigned int immFlag = (instr >> 5) & 0x1;
     if (immFlag)
     {
-        uint16_t imm5 = signExtend(instr & 0x1F, 5);
+        short unsigned int imm5 = signExtend(instr & 0x1F, 5);
         reg[r0] = reg[r1] + imm5;
     }
     else
     {
-        uint16_t r2 = instr & 0x7;
+        short unsigned int r2 = instr & 0x7;
         reg[r0] = reg[r1] + reg[r2];
     }
     updateFlags(r0);
@@ -172,32 +172,32 @@ void add(uint16_t instr)
 //---------------------------------------------------------------------------------------//
 //load(c)
 //---------------------------------------------------------------------------------------//
-void load(uint16_t instr)
+void load(short unsigned int instr)
 {
-    uint16_t r0 = (instr >> 9) & 0x7;
-    uint16_t pcOffset = signExtend(instr & 0x1FF, 9);
+    short unsigned int r0 = (instr >> 9) & 0x7;
+    short unsigned int pcOffset = signExtend(instr & 0x1FF, 9);
     reg[r0] = memory[reg[R_PC] + pcOffset];
     updateFlags(r0);
 }
 //---------------------------------------------------------------------------------------//
 //store (c)
 //---------------------------------------------------------------------------------------//
-void store(uint16_t instr)
+void store(short unsigned int instr)
 {
-    uint16_t sr = (instr >> 9) & 0x7;
-    uint16_t pcOffset = signExtend(instr & 0x1FF, 9);
+    short unsigned int sr = (instr >> 9) & 0x7;
+    short unsigned int pcOffset = signExtend(instr & 0x1FF, 9);
     memory[reg[R_PC] + pcOffset] = reg[sr];
 }
 //---------------------------------------------------------------------------------------//
 //jump to subroutine or jump registor (this has two modes)
 //---------------------------------------------------------------------------------------//
-void jsr(uint16_t instr)
+void jsr(short unsigned int instr)
 {
     reg[R_R7] = reg[R_PC];
-    uint16_t flag = (instr >> 11) & 0x1;
+    short unsigned int flag = (instr >> 11) & 0x1;
     if (flag)
     {
-        uint16_t baseR = (instr >> 6) & 0x7;
+        short unsigned int baseR = (instr >> 6) & 0x7;
         reg[R_PC] = reg[baseR];
     }
     else
@@ -208,19 +208,19 @@ void jsr(uint16_t instr)
 //---------------------------------------------------------------------------------------//
 //and operation
 //---------------------------------------------------------------------------------------//
-void and_op(uint16_t instr)
+void and_op(short unsigned int instr)
 {
-    uint16_t r0 = (instr >> 9) & 0x7;
-    uint16_t r1 = (instr >> 6) & 0x7;
-    uint16_t immFlag = (instr >> 5) & 0x1;
+    short unsigned int r0 = (instr >> 9) & 0x7;
+    short unsigned int r1 = (instr >> 6) & 0x7;
+    short unsigned int immFlag = (instr >> 5) & 0x1;
     if (immFlag)
     {
-        uint16_t imm5 = signExtend(instr & 0x1F, 5);
+        short unsigned int imm5 = signExtend(instr & 0x1F, 5);
         reg[r0] = reg[r1] & imm5;
     }
     else
     {
-        uint16_t r2 = instr & 0x7;
+        short unsigned int r2 = instr & 0x7;
         reg[r0] = reg[r1] & reg[r2];
     }
     updateFlags(r0);
@@ -228,29 +228,29 @@ void and_op(uint16_t instr)
 //---------------------------------------------------------------------------------------//
 //load base off set
 //---------------------------------------------------------------------------------------//
-void loadRegister(uint16_t instr)
+void loadRegister(short unsigned int instr)
 {
-    uint16_t r0 = (instr >> 9) & 0x7;
-    uint16_t baseR = (instr >> 6) & 0x7;
+    short unsigned int r0 = (instr >> 9) & 0x7;
+    short unsigned int baseR = (instr >> 6) & 0x7;
     reg[r0] = memory[reg[baseR] + signExtend(instr & 0x3F, 6)];
     updateFlags(r0);
 }
 //---------------------------------------------------------------------------------------//
 //store Created
 //---------------------------------------------------------------------------------------//
-void storeRegister(uint16_t instr)
+void storeRegister(short unsigned int instr)
 {
-    uint16_t sr = (instr >> 9) & 0x7;
-    uint16_t baseR = (instr >> 6) & 0x7;
+    short unsigned int sr = (instr >> 9) & 0x7;
+    short unsigned int baseR = (instr >> 6) & 0x7;
     memory[reg[baseR] + signExtend(instr & 0x3F, 6)] = reg[sr];
 }
 //---------------------------------------------------------------------------------------//
 //load Indirect (c)
 //---------------------------------------------------------------------------------------//
-void loadIndirect(uint16_t instr)
+void loadIndirect(short unsigned int instr)
 {
-    uint16_t r0 = (instr >> 9) & 0x7;
-    uint16_t pcOffset = signExtend(instr & 0x1FF, 9);
+    short unsigned int r0 = (instr >> 9) & 0x7;
+    short unsigned int pcOffset = signExtend(instr & 0x1FF, 9);
     reg[r0] = memory[memory[reg[R_PC] + pcOffset]];
     updateFlags(r0);
 }
@@ -268,7 +268,7 @@ int main(int argc, char *argv[])
 {
     // Initialize memory and registers
     reg[R_COND] = FL_ZRO;
-    const uint16_t PC_START = 0x3000;
+    const short unsigned int PC_START = 0x3000;
     reg[R_PC] = PC_START;
 
     // Disable input buffering
@@ -289,8 +289,8 @@ int main(int argc, char *argv[])
     while (running)
     {
         // Fetch instruction
-        uint16_t instr = memory[reg[R_PC]++];
-        uint16_t op = instr >> 12;
+        short unsigned int instr = memory[reg[R_PC]++];
+        short unsigned int op = instr >> 12;
 
         switch (op)
         {
