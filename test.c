@@ -276,7 +276,9 @@ void LDR(uint16_t instr)
 //SELF WRITTEN
 void STR(uint16_t instr)
 {
-
+    uint16_t sr = (instr >> 9) & 0x7;
+    uint16_t baseR = (instr >> 6) & 0x7;
+    memory[reg[baseR] + signExtend(instr & 0x3F, 6)] = reg[sr];
 }
 
 //load indirect
