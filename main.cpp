@@ -36,6 +36,7 @@ public:
     {
         if (!SetConsoleMode(hStdin, fdwOldMode))
         {
+            //similar to the c version, only with an error handling statement
             std::cerr << "Error: Unable to restore console mode." << std::endl;
         }
     }

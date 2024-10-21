@@ -51,7 +51,7 @@ enum Registors
 
 enum Opcodes
 {
-    OP_BR = 0,      //branch
+    OP_BR = 0,      //branch            done
     OP_ADD,         //ADD               done
     OP_LD,          //load              done
     OP_ST,          //store             done
@@ -59,9 +59,9 @@ enum Opcodes
                     //or jump to subroutine
     OP_AND,         //bitwsie and       done
     OP_LDR,         //load registor     done
-    OP_STR,         //store registor
-    OP_RTI,         //unusued
-    OP_NOT,         //bitwise not
+    OP_STR,         //store registor    pending approval
+    OP_RTI,         //unusued           skipped
+    OP_NOT,         //bitwise not       pending approval
     OP_LDI,         //load indirect     done
     OP_STI,         //store indirect
     OP_JMP,         //jump
@@ -98,8 +98,6 @@ void update_flags(uint16_t r)
 }
 
 
-
-
 // ---> SIGN EXTEND
     //basically add 0s to +ve numbers and 1s to -ve numbers
 uint16_t sign_extend(uint16_t x, int bit_count)
@@ -129,9 +127,9 @@ void branch(uint16_t instr)
 
     // 0x1FF; 
 
-    if((n && 1) || (z && 1) || (p && 1))
+    if ((n && (reg[R_COND] & FL_NEG)) || (z && (reg[R_COND] & FL_ZRO)) || (p && (reg[R_COND] & FL_POS)))
     {
-
+        reg[R_PC] += sign_extend(pc_offset, 9);
     }
 }
 
@@ -281,6 +279,25 @@ void STR(uint16_t instr)
     memory[reg[baseR] + signExtend(instr & 0x3F, 6)] = reg[sr];
 }
 
+//says unused??
+//SELF WRITTEN
+void RTI(uint16_t instr)
+{
+
+}
+
+//bitwise complement (bitwise not)
+//SELF WRITTEN
+void NOT(uint16_t instr)
+{
+    uint16_t r0 = (instr >> 9) & 0x7;
+    
+    uint16_t r1 = (instr >> 6) & 0x7;
+
+    //flip the bits in contents of source register (does that make sense?)
+    reg[r0] = ~(reg[r1]);
+}
+
 //load indirect
 void LDI(uint16_t instr)
 {
@@ -296,8 +313,18 @@ void LDI(uint16_t instr)
     update_flags(r0);
 }
 
+//store indirect
+//SELF WRITTEN
+void STI(uint16_t instr)
+{
+    //NOT THE DESTINATION REGISTER
+    uint16_t r0 = (instr >> 9) & 0x7;
 
+    //where we need to store our information
+    uint16_t pc_offset = sign_extend(instr & 0x1FF, 9);
 
+    
+}
 
 //---------------------------------------------------------------------------------------//
 //Instructions end here
