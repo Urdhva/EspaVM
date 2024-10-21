@@ -78,22 +78,22 @@ enum Registors
 };
 enum Opcodes
 {
-    OP_BR = 0,
-    OP_ADD,
-    OP_LD,
-    OP_ST,
-    OP_JSR,
-    OP_AND,
-    OP_LDR,
-    OP_STR,
-    OP_RTI,
-    OP_NOT,
-    OP_LDI,
-    OP_STI,
-    OP_JMP,
-    OP_RES,
-    OP_LEA,
-    OP_TRAP
+    OP_BR = 0,  //branch    done
+    OP_ADD,     // ADD      done
+    OP_LD,      //Load      done
+    OP_ST,      //Store     donr
+    OP_JSR,     //Jump Registor     done
+    OP_AND,     //bitwsie and       done
+    OP_LDR,     //load registor     done
+    OP_STR,     //store registor    done
+    OP_RTI,     //unusued
+    OP_NOT,     //bitwise not       done
+    OP_LDI,     //load indirect     done
+    OP_STI,     //store indirect
+    OP_JMP,     //jump
+    OP_RES,     //reserved (unusued)
+    OP_LEA,     //load effective address
+    OP_TRAP     //execute trap
 };
 enum Condition_Flags
 {
@@ -140,13 +140,17 @@ uint16_t signExtend(uint16_t x, int bitCount)
 //---------------------------------------------------------------------------------------//
 void branch(uint16_t instr)
 {
-    uint16_t n = (instr >> 11) & 0x1;
-    uint16_t z = (instr >> 10) & 0x1;
-    uint16_t p = (instr >> 9) & 0x1;
-    uint16_t pcOffset = instr & 0x1FF;
+    uint16_t n = (instr >> 11) & 0x1;// Extract negative flag
+    uint16_t z = (instr >> 10) & 0x1;// Extract zero flag
+    uint16_t p = (instr >> 9) & 0x1; // Extract positive flag
+    uint16_t pcOffset = instr & 0x1FF;// Get 9-bit PC offset
+    // Check if the condition flags match. The branch is taken if:
+    // 1. The 'n' flag in the instruction is set AND the condition register (R_COND) has FL_NEG set, OR
+    // 2. The 'z' flag in the instruction is set AND R_COND has FL_ZRO set, OR
+    // 3. The 'p' flag in the instruction is set AND R_COND has FL_POS set
     if ((n && (reg[R_COND] & FL_NEG)) || (z && (reg[R_COND] & FL_ZRO)) || (p && (reg[R_COND] & FL_POS)))
     {
-        reg[R_PC] += signExtend(pcOffset, 9);
+        reg[R_PC] += signExtend(pcOffset, 9);// Update the program counter (R_PC) by adding the signed offsets
     }
 }
 //---------------------------------------------------------------------------------------//
@@ -206,7 +210,7 @@ void jsr(uint16_t instr)
     }
 }
 //---------------------------------------------------------------------------------------//
-//and operation
+//Logical And Operation
 //---------------------------------------------------------------------------------------//
 void and_op(uint16_t instr)
 {
@@ -236,13 +240,24 @@ void loadRegister(uint16_t instr)
     updateFlags(r0);
 }
 //---------------------------------------------------------------------------------------//
-//store Created
+//Store Resistor  Created
 //---------------------------------------------------------------------------------------//
 void storeRegister(uint16_t instr)
 {
     uint16_t sr = (instr >> 9) & 0x7;
     uint16_t baseR = (instr >> 6) & 0x7;
     memory[reg[baseR] + signExtend(instr & 0x3F, 6)] = reg[sr];
+}
+//---------------------------------------------------------------------------------------//
+//Logical Not Operator
+//---------------------------------------------------------------------------------------//
+void not_op(uint16_t instr)
+{
+    uint16_t r0 = (instr >> 9) & 0x7;  // Destination register (bits [11:9])
+    uint16_t r1 = (instr >> 6) & 0x7;  // Source register (bits [8:6])
+    reg[r0] = ~reg[r1];  // Perform bitwise NOT on the value in r1 and store the result in r0
+    updateFlags(r0);  // Update the condition flags based on the result in r0
+    
 }
 //---------------------------------------------------------------------------------------//
 //load Indirect (c)
@@ -307,7 +322,7 @@ int main(int argc, char *argv[])
             branch(instr);
             break;
         case OP_JMP:
-            jmp(instr);
+            //jmp(instr);
             break;
         case OP_JSR:
             jsr(instr);
@@ -322,19 +337,19 @@ int main(int argc, char *argv[])
             loadRegister(instr);
             break;
         case OP_LEA:
-            lea(instr);
+            //lea(instr);
             break;
         case OP_ST:
             store(instr);
             break;
         case OP_STI:
-            storeIndirect(instr);
+            //storeIndirect(instr);
             break;
         case OP_STR:
             storeRegister(instr);
             break;
         case OP_TRAP:
-            trap(instr);
+            //trap(instr);
             break;
         case OP_RES:
         case OP_RTI:
