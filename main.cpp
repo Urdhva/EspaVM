@@ -92,7 +92,7 @@ enum Opcodes
     OP_LDI,     //load indirect     done
     OP_STI,     //store indirect
     OP_JMP,     //jump
-    OP_RES,     //reserved (unusued)
+    OP_RES,     //reserved          (unusued)
     OP_LEA,     //load effective address
     OP_TRAP     //execute trap
 };

@@ -59,11 +59,11 @@ enum Opcodes
                     //or jump to subroutine
     OP_AND,         //bitwsie and       done
     OP_LDR,         //load registor     done
-    OP_STR,         //store registor    pending approval
+    OP_STR,         //store registor    done
     OP_RTI,         //unusued           skipped
-    OP_NOT,         //bitwise not       pending approval
+    OP_NOT,         //bitwise not       done
     OP_LDI,         //load indirect     done
-    OP_STI,         //store indirect
+    OP_STI,         //store indirect    done
     OP_JMP,         //jump
     OP_RES,         //reserved (unusued)
     OP_LEA,         //load effective address
@@ -274,9 +274,13 @@ void LDR(uint16_t instr)
 //SELF WRITTEN
 void STR(uint16_t instr)
 {
-    uint16_t sr = (instr >> 9) & 0x7;
-    uint16_t baseR = (instr >> 6) & 0x7;
-    memory[reg[baseR] + signExtend(instr & 0x3F, 6)] = reg[sr];
+    //DESTINATION REGISTER
+    uint16_t r0 = (instr >> 9) & 0x7;
+    //base register to which we add pc_offset
+    uint16_t offset = instr & 0x1F;
+    uint16_t r1 = ((instr >> 6) & 0x7) + offset;
+    reg[r1] = reg[r0];
+
 }
 
 //says unused??
@@ -320,10 +324,11 @@ void STI(uint16_t instr)
     //NOT THE DESTINATION REGISTER
     uint16_t r0 = (instr >> 9) & 0x7;
 
-    //where we need to store our information
-    uint16_t pc_offset = sign_extend(instr & 0x1FF, 9);
+    //destination register
+    uint16_t r1 = reg[R_PC] + sign_extend(instr & 0x1FF, 9);
 
-    
+    reg[r1] = reg[r0];
+    update_flags(r1);
 }
 
 //---------------------------------------------------------------------------------------//
