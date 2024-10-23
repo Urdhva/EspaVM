@@ -65,8 +65,8 @@ enum Opcodes
     OP_LDI,         //load indirect     done
     OP_STI,         //store indirect    done
     OP_JMP,         //jump              done
-    OP_RES,         //reserved (unusued)
-    OP_LEA,         //load effective address
+    OP_RES,         //reserved (unusued)        done
+    OP_LEA,         //load effective address    done
     OP_TRAP         //execute trap
 };
 
@@ -341,6 +341,24 @@ void JMP(uint16_t instr)
     //pc supposedly stores the address of where we want to jump to
     //not data 
     reg[R_PC] = r0;
+}
+
+//reserved
+//SELF WRITTEN
+void RES(uint16_t instr)
+{
+    //reserved
+}
+
+//laod effective address
+//SELF WRITTEN
+void LEA(uint16_t instr)
+{
+    //destination register
+    uint16_t r0 = (instr >> 9) & 0x1FF;
+    
+    r0 = reg[R_PC] + sign_extend(instr & 0x1FF, 9);
+    update_flags(r0);
 }
 
 
