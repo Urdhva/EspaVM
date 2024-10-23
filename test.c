@@ -64,7 +64,7 @@ enum Opcodes
     OP_NOT,         //bitwise not       done
     OP_LDI,         //load indirect     done
     OP_STI,         //store indirect    done
-    OP_JMP,         //jump
+    OP_JMP,         //jump              done
     OP_RES,         //reserved (unusued)
     OP_LEA,         //load effective address
     OP_TRAP         //execute trap
@@ -330,6 +330,19 @@ void STI(uint16_t instr)
     reg[r1] = reg[r0];
     update_flags(r1);
 }
+
+//jump
+//SELF WRITTEN
+void JMP(uint16_t instr)
+{
+    //base register
+    uint16_t r0 = (instr >> 6) & 0x7;
+
+    //pc supposedly stores the address of where we want to jump to
+    //not data 
+    reg[R_PC] = r0;
+}
+
 
 //---------------------------------------------------------------------------------------//
 //Instructions end here
