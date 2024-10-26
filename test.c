@@ -287,7 +287,7 @@ void STR(uint16_t instr)
 //SELF WRITTEN
 void RTI(uint16_t instr)
 {
-
+    abort();
 }
 
 //bitwise complement (bitwise not)
@@ -300,6 +300,7 @@ void NOT(uint16_t instr)
 
     //flip the bits in contents of source register (does that make sense?)
     reg[r0] = ~(reg[r1]);
+    update_flags(r0);
 }
 
 //load indirect
@@ -359,6 +360,13 @@ void LEA(uint16_t instr)
     
     r0 = reg[R_PC] + sign_extend(instr & 0x1FF, 9);
     update_flags(r0);
+}
+
+//execute trap
+//SELF WRITTEN
+void TRAP()
+{
+
 }
 
 
