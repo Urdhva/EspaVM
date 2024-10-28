@@ -166,7 +166,7 @@ void LD(uint16_t instr)
     //get destination register
     uint16_t r0 = (instr >> 9) & 0x7;
 
-    uint16_t pc_offset = sign_extend((instr && 0x1FF), 9);
+    uint16_t pc_offset = sign_extend((instr & 0x1FF), 9);
 
     //we are reading date from (pc + pc_offset) address
     reg[r0] = mem_read(reg[R_PC] + pc_offset);
@@ -183,15 +183,17 @@ void ST(uint16_t instr)
     //calculating the PC offset
     uint16_t pc_offset = sign_extend(instr & 0x1FF, 9);
 
+    mem_write(reg[R_PC] + pc_offset, reg[sr]);
+
     //this is PC + PC_OFFSET    
     //this is where we need to store our data that has been read from sr
-    uint16_t rs = reg[R_PC] + pc_offset;
+    // uint16_t rs = reg[R_PC] + pc_offset;
 
     //so contents of rs are to be overwritten with contents of sr
-    reg[rs] = mem_read(sr);
+    // reg[rs] = mem_read(sr);
     //rs is the destination register hence we update it's update flags.
     //(or something like that)
-    update_flags(rs);
+    // update_flags(rs);
 }
 
 //jump to subroutine or jump registor (this has two modes)
@@ -206,18 +208,21 @@ void JSR(uint16_t instr)
     //pc is then loaded with the address of the first instruction 
     //of the subroutine
     //so basically an undconditional jump (all according to what's written in the manual)
-    uint16_t flag = (instr >> 1) & 0x1;
+    uint16_t flag = (instr >> 11) & 0x1;
 
     if(flag){
         //we then get our base register
         //this is the address of the base register
-        reg[R_PC] = (instr >> 6) & 0x7;
+        uint16_t pc_offset = sign_extend(instr & 0x7FF, 11);
+        reg[R_PC] += pc_offset;
     }
     else{
-        reg[R_PC] = reg[R_PC] + sign_extend(instr & 0x7FF, 11);
+        uint16_t r1 = (instr >> 6) & 0x7;
+        reg[R_PC] = reg[r1];
     }
 
     //I'm not sure if we need to use the update_flag function here
+    //update - no update flag required.
 }
 
 //logical and (duh)
@@ -258,7 +263,9 @@ void LDR(uint16_t instr)
 
     uint16_t baseR = (instr >> 6) & 0x7;
 
-    reg[r0] = reg[baseR] + sign_extend(instr & 0x1F, 5);
+    // uint16_t offset = sign_extend(instr >> 0x3F, 6);
+
+    reg[r0] = mem_read(reg[baseR] + sign_extend(instr & 0x3F, 6));
 
     update_flags(r0);
 }
@@ -270,10 +277,9 @@ void STR(uint16_t instr)
     //DESTINATION REGISTER
     uint16_t r0 = (instr >> 9) & 0x7;
     //base register to which we add pc_offset
-    uint16_t offset = instr & 0x1F;
-    uint16_t r1 = ((instr >> 6) & 0x7) + offset;
-    reg[r1] = reg[r0];
-
+    uint16_t r1 = (instr >> 6) & 0x7;
+    uint16_t offset = sign_extend(instr & 0x3F, 6);
+    mem_write(reg[r1] + offset, reg[r0]);
 }
 
 //says unused??
@@ -332,9 +338,8 @@ void JMP(uint16_t instr)
     //base register
     uint16_t r0 = (instr >> 6) & 0x7;
 
-    //pc supposedly stores the address of where we want to jump to
-    //not data 
-    reg[R_PC] = r0;
+    //okay so apparently it stores data of the registry 
+    reg[R_PC] = reg[r0];
 }
 
 //reserved
