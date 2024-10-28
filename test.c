@@ -117,19 +117,12 @@ uint16_t sign_extend(uint16_t x, int bit_count)
 //SELF WRITTEN
 void branch(uint16_t instr)
 {
-    uint16_t n = (instr >> 11) & 0x1;
-    uint16_t z = (instr >> 10) & 0x1;
-    uint16_t p = (instr >> 9) & 0x1;
+    uint16_t pc_offset = sign_extend(instr && 0x1FF, 9);
+    uint16_t cond_flag = (instr >> 9) & 0x7;
 
-    //0xFF is 511 in integer and 1 1111 1111 in binary
-    //basically we are taking only the first 9 bits
-    uint16_t pc_offset = instr && 0xFF;   
-
-    // 0x1FF; 
-
-    if ((n && (reg[R_COND] & FL_NEG)) || (z && (reg[R_COND] & FL_ZRO)) || (p && (reg[R_COND] & FL_POS)))
+    if(cond_flag & reg[R_COND])
     {
-        reg[R_PC] += sign_extend(pc_offset, 9);
+        reg[R_PC] += pc_offset;
     }
 }
 
