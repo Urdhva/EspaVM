@@ -360,16 +360,53 @@ void LEA(uint16_t instr)
     update_flags(r0);
 }
 
-//execute trap
-//SELF WRITTEN
-void TRAP()
-{
-
-}
-
 
 //---------------------------------------------------------------------------------------//
 //Instructions end here
+
+
+//All trap routines go here
+//---------------------------------------------------------------------------------------//
+
+enum TRAP_codes
+{
+    TRAP_GETC = 0x20,   //get character from the keyboard, not echoed on the terminal
+    TRAP_OUT = 0x21,
+    TRAP_PUTS = 0x22,
+    TRAP_IN = 0x23,
+    TRAP_PUTSP = 0x24,
+    TRAP_HALT = 0x25
+};
+
+    //predefined routines to perform common tasks.
+    //getting input from the keyboard comes under trap routines
+    //something something - similar to an operating system
+    //remember - what we are designging is the architecture
+    //not the operating systemn.
+    ///we need an operating system for the user to interact with the machine.
+
+
+//outputs a null terminated string
+//the function is in lower case otherwise we'll get an ambiguity error
+//with the enum codes
+void trap_puts()
+{
+    uint16_t* c = memory + reg[R_R0];
+    while(*c)
+    {
+        putc((char)*c, stdout);
+        ++c;
+    }
+    fflush(stdout);
+}
+
+
+
+
+
+
+//---------------------------------------------------------------------------------------//
+//TRAP routines end here
 
 
 //refer contrl flow screeny for order of functions and loops
@@ -456,7 +493,23 @@ int main()
                 // @{STR}
                 break;
             case OP_TRAP:
-                // @{TRAP}
+                reg[R_R7] = reg[R_PC];
+
+                switch(instr & 0xFF)
+                {
+                    case TRAP_GETC:
+                    break;
+                    case TRAP_OUT:
+                    break;
+                    case TRAP_PUTS:
+                    break;
+                    case TRAP_IN: 
+                    break;
+                    case TRAP_PUTSP:
+                    break;
+                    case TRAP_HALT:
+                    break;
+                }
                 break;
             case OP_RES:
             case OP_RTI:
