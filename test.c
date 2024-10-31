@@ -386,6 +386,14 @@ enum TRAP_codes
     ///we need an operating system for the user to interact with the machine.
 
 
+void trap_getc()
+{
+    //read single ASCII value
+    reg[R_R0] = (uint16_t)getchar();
+    update_flags(R_R0);
+}
+
+
 //outputs a null terminated string
 //the function is in lower case otherwise we'll get an ambiguity error
 //with the enum codes
@@ -401,7 +409,10 @@ void trap_puts()
 }
 
 
+void trap_in()
+{
 
+}
 
 
 
