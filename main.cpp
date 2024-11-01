@@ -91,9 +91,9 @@ enum Opcodes
     OP_NOT,     //bitwise not       done
     OP_LDI,     //load indirect     done
     OP_STI,     //store indirect    done
-    OP_JMP,     //jump
-    OP_RES,     //reserved          (unusued)
-    OP_LEA,     //load effective address
+    OP_JMP,     //jump              done
+    OP_RES,     //reserved          (unusued)       done
+    OP_LEA,     //load effective address            done
     OP_TRAP     //execute trap
 };
 enum Condition_Flags
@@ -290,7 +290,84 @@ void storeIndirect(short unsigned int instr) {
     // Store the value in sr to memory at the indirect address
     memory[address] = reg[sr];
 }
+//---------------------------------------------------------------------------------------//
+// Jump instruction
+//---------------------------------------------------------------------------------------//
+void jmp(short unsigned int instr) {
+    short unsigned int r0 = (instr >> 6) & 0x7; // Base register
+    reg[R_PC] = reg[r0]; // Set PC to the value in the base register
+}
+//---------------------------------------------------------------------------------------//
+// Reserved instruction (usually a placeholder)
+//---------------------------------------------------------------------------------------//
+void res(short unsigned int instr) {
+    // Reserved for future use
+}
+//---------------------------------------------------------------------------------------//
+// Load Effective Address
+//---------------------------------------------------------------------------------------//
+void lea(short unsigned int instr) {
+    // Get the destination register
+    uint16_t r0 = (instr >> 9) & 0x7;
+    // Compute the effective address and store it in the destination register
+    reg[r0] = reg[R_PC] + signExtend(instr & 0x1FF, 9);
+    // Update the condition flags for the destination register
+    updateFlags(r0);
+}
 
+void TRAP(uint16_t instr) {
+    uint16_t trapvector = instr & 0xFF; // Mask the lower 8 bits to get the trap vector
+    reg[R_R7] = reg[R_PC]; // Save the current PC to R7
+    switch (trapvector) {
+        case 0x20: // GETC: Read a single character from the keyboard
+            reg[R_R0] = (uint16_t)getchar();
+            updateFlags(R_R0);
+            break;
+        case 0x21: // OUT: Output a character
+            putc((char)reg[R_R0], stdout);
+            fflush(stdout);
+            break;
+        case 0x22: // PUTS: Output a string
+            {
+                uint16_t* c = memory + reg[R_R0];
+                while (*c) {
+                    putc((char)*c, stdout);
+                    ++c;
+                }
+                fflush(stdout);
+            }
+            break;
+        case 0x23: // IN: Prompt for a single character input
+            {
+                printf("Enter a character: ");
+                char c = getchar();
+                reg[R_R0] = (uint16_t)c;
+                updateFlags(R_R0);
+            }
+            break;
+        case 0x24: // PUTSP: Output a string of packed characters
+            {
+                uint16_t* c = memory + reg[R_R0];
+                while (*c) {
+                    char char1 = (*c) & 0xFF;
+                    putc(char1, stdout);
+                    char char2 = (*c) >> 8;
+                    if (char2) putc(char2, stdout);
+                    ++c;
+                }
+                fflush(stdout);
+            }
+            break;
+        case 0x25: // HALT: Halt the program
+            printf("HALT\n");
+            fflush(stdout);
+            exit(0);
+            break;
+        default:
+            printf("Unknown TRAP code: 0x%X\n", trapvector);
+            break;
+    }
+}
 
 
 
@@ -301,6 +378,8 @@ void storeIndirect(short unsigned int instr) {
 //---------------------------------------------------------------------------------------//
 //---------------------------------------------------------------------------------------//
 //---------------------------------------------------------------------------------------//
+
+
 //Main code
 int main(int argc, char *argv[])
 {
@@ -345,7 +424,7 @@ int main(int argc, char *argv[])
             branch(instr);
             break;
         case OP_JMP:
-            //jmp(instr);
+            jmp(instr);
             break;
         case OP_JSR:
             jsr(instr);
@@ -360,7 +439,7 @@ int main(int argc, char *argv[])
             loadRegister(instr);
             break;
         case OP_LEA:
-            //lea(instr);
+            lea(instr);
             break;
         case OP_ST:
             store(instr);
@@ -375,6 +454,8 @@ int main(int argc, char *argv[])
             //trap(instr);
             break;
         case OP_RES:
+            res(instr);
+            break;
         case OP_RTI:
             RTI(instr);
             break;
