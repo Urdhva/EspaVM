@@ -250,6 +250,13 @@ void storeRegister(short unsigned int instr)
     memory[reg[baseR] + signExtend(instr & 0x3F, 6)] = reg[sr];
 }
 //---------------------------------------------------------------------------------------//
+//RTI
+//---------------------------------------------------------------------------------------//
+void RTI(short unsigned int instr)
+{
+    abort();
+}
+//---------------------------------------------------------------------------------------//
 //Logical Not Operator
 //---------------------------------------------------------------------------------------//
 void not_op(short unsigned int instr)
@@ -354,6 +361,8 @@ int main(int argc, char *argv[])
             break;
         case OP_RES:
         case OP_RTI:
+            RTI(instr);
+            break;
         default:
             // @{BAD OPCODE}
             break;
