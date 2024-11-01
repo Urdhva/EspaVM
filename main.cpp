@@ -90,7 +90,7 @@ enum Opcodes
     OP_RTI,     //unusued           done
     OP_NOT,     //bitwise not       done
     OP_LDI,     //load indirect     done
-    OP_STI,     //store indirect
+    OP_STI,     //store indirect    done
     OP_JMP,     //jump
     OP_RES,     //reserved          (unusued)
     OP_LEA,     //load effective address
@@ -277,6 +277,21 @@ void loadIndirect(short unsigned int instr)
     reg[r0] = memory[memory[reg[R_PC] + pcOffset]];
     updateFlags(r0);
 }
+//---------------------------------------------------------------------------------------//
+//store Indirect (c)
+//---------------------------------------------------------------------------------------//
+void storeIndirect(short unsigned int instr) {
+    // Source register
+    short unsigned int sr = (instr >> 9) & 0x7;
+    // PC offset
+    short unsigned int pc_offset = signExtend(instr & 0x1FF, 9);
+    // Indirect address: read from memory at (PC + offset), then write to memory at that address
+    short unsigned int address = memory[reg[R_PC] + pc_offset];
+    // Store the value in sr to memory at the indirect address
+    memory[address] = reg[sr];
+}
+
+
 
 
 //---------------------------------------------------------------------------------------//
@@ -351,7 +366,7 @@ int main(int argc, char *argv[])
             store(instr);
             break;
         case OP_STI:
-            //storeIndirect(instr);
+            storeIndirect(instr);
             break;
         case OP_STR:
             storeRegister(instr);
