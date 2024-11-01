@@ -9,6 +9,29 @@
 HANDLE hStdin = INVALID_HANDLE_VALUE;
 DWORD fdwMode, fdwOldMode;
 
+void disable_input_buffering()
+{
+    hStdin = GetStdHandle(STD_INPUT_HANDLE);
+    GetConsoleMode(hStdin, &fdwOldMode); /* save old mode */
+    fdwMode = fdwOldMode
+            ^ ENABLE_ECHO_INPUT  /* no input echo */
+            ^ ENABLE_LINE_INPUT; /* return when one or
+                                    more characters are available */
+    SetConsoleMode(hStdin, fdwMode); /* set new mode */
+    FlushConsoleInputBuffer(hStdin); /* clear buffer */
+}
+
+void restore_input_buffering()
+{
+    SetConsoleMode(hStdin, fdwOldMode);
+}
+
+uint16_t check_key()
+{
+    return WaitForSingleObject(hStdin, 1000) == WAIT_OBJECT_0 && _kbhit();
+}
+
+
 //memory mapped registers
 enum MMR
 {
@@ -47,35 +70,10 @@ enum Registors
 };
 
 //our register storage
+//registors will be stored in an array:
+//basically short unsigned int
+//r_count is the max size of the registry
 uint16_t reg[R_COUNT];
-
-void disable_input_buffering()
-{
-    hStdin = GetStdHandle(STD_INPUT_HANDLE);
-    GetConsoleMode(hStdin, &fdwOldMode); /* save old mode */
-    fdwMode = fdwOldMode
-            ^ ENABLE_ECHO_INPUT  /* no input echo */
-            ^ ENABLE_LINE_INPUT; /* return when one or
-                                    more characters are available */
-    SetConsoleMode(hStdin, fdwMode); /* set new mode */
-    FlushConsoleInputBuffer(hStdin); /* clear buffer */
-}
-
-void restore_input_buffering()
-{
-    SetConsoleMode(hStdin, fdwOldMode);
-}
-
-uint16_t check_key()
-{
-    return WaitForSingleObject(hStdin, 1000) == WAIT_OBJECT_0 && _kbhit();
-}
-
-//unsigned integer of 16 bits
-
-
-
-
 
 
 enum Opcodes
@@ -107,12 +105,23 @@ enum Condition_Flags
     FL_NEG = 1 << 2,    //N     note: translates to "string is null" in bash
 };
 
+void handle_interrupt(int signal)
+{
+    restore_input_buffering();
+    printf("\n");
+    exit(-2);
+}
 
-//registors will be stored in an array:
-//basically short unsigned int
-//r_count is the max size of the registry
-
-
+// ---> SIGN EXTEND
+    //basically add 0s to +ve numbers and 1s to -ve numbers
+uint16_t sign_extend(uint16_t x, int bit_count)
+{
+    if((x >> (bit_count - 1)) & 1)
+    {
+        x |= (0xFFFF << bit_count);
+    }
+    return x;
+}
 
 //x here is a byte
 uint16_t swap16(uint16_t x)
@@ -135,16 +144,7 @@ void update_flags(uint16_t r)
 }
 
 
-// ---> SIGN EXTEND
-    //basically add 0s to +ve numbers and 1s to -ve numbers
-uint16_t sign_extend(uint16_t x, int bit_count)
-{
-    if((x >> (bit_count - 1)) & 1)
-    {
-        x |= (0xFFFF << bit_count);
-    }
-    return x;
-}
+
 
 //funciton decleration
 uint16_t mem_read(uint16_t address);
@@ -154,7 +154,6 @@ void mem_write(uint16_t address, uint16_t val);
 
 //all instructions go here
 //--------------------------------------------------------------------------------------//
-
 
 //conditional branch
 //SELF WRITTEN
@@ -478,6 +477,9 @@ uint16_t mem_read(uint16_t address)
 // '--->' indicates a snippet defined by the tutorial
 int main()
 {   
+    signal(SIGINT, handle_interrupt);
+    disable_input_buffering();
+
     // ---> MEMORY MAPPED REGISTERES
     //registry number 10 is storingn condition flag zro (1 << 1)
     reg[R_COND] = FL_ZRO;
@@ -621,5 +623,5 @@ int main()
         }
     }
 
-    // {SHUTDONW}
+    restore_input_buffering();
 }
