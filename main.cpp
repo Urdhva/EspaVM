@@ -94,7 +94,7 @@ enum Opcodes
     OP_JMP,     //jump              done
     OP_RES,     //reserved          (unusued)       done
     OP_LEA,     //load effective address            done
-    OP_TRAP     //execute trap
+    OP_TRAP     //execute trap                      done
 };
 enum Condition_Flags
 {
@@ -308,28 +308,32 @@ void res(short unsigned int instr) {
 //---------------------------------------------------------------------------------------//
 void lea(short unsigned int instr) {
     // Get the destination register
-    uint16_t r0 = (instr >> 9) & 0x7;
+    short unsigned int r0 = (instr >> 9) & 0x7;
     // Compute the effective address and store it in the destination register
     reg[r0] = reg[R_PC] + signExtend(instr & 0x1FF, 9);
     // Update the condition flags for the destination register
     updateFlags(r0);
 }
-
-void TRAP(uint16_t instr) {
-    uint16_t trapvector = instr & 0xFF; // Mask the lower 8 bits to get the trap vector
+//---------------------------------------------------------------------------------------//
+// trap
+//---------------------------------------------------------------------------------------//
+void trap(short unsigned int instr) {
+    short unsigned int trapvector = instr & 0xFF; // Mask the lower 8 bits to get the trap vector
     reg[R_R7] = reg[R_PC]; // Save the current PC to R7
     switch (trapvector) {
         case 0x20: // GETC: Read a single character from the keyboard
-            reg[R_R0] = (uint16_t)getchar();
+            reg[R_R0] = (short unsigned int)getchar();
             updateFlags(R_R0);
             break;
+
         case 0x21: // OUT: Output a character
             putc((char)reg[R_R0], stdout);
             fflush(stdout);
             break;
+
         case 0x22: // PUTS: Output a string
             {
-                uint16_t* c = memory + reg[R_R0];
+                short unsigned int* c = memory + reg[R_R0];
                 while (*c) {
                     putc((char)*c, stdout);
                     ++c;
@@ -337,17 +341,19 @@ void TRAP(uint16_t instr) {
                 fflush(stdout);
             }
             break;
+
         case 0x23: // IN: Prompt for a single character input
             {
                 printf("Enter a character: ");
                 char c = getchar();
-                reg[R_R0] = (uint16_t)c;
+                reg[R_R0] = (short unsigned int)c;
                 updateFlags(R_R0);
             }
             break;
+
         case 0x24: // PUTSP: Output a string of packed characters
             {
-                uint16_t* c = memory + reg[R_R0];
+                short unsigned int* c = memory + reg[R_R0];
                 while (*c) {
                     char char1 = (*c) & 0xFF;
                     putc(char1, stdout);
@@ -358,11 +364,13 @@ void TRAP(uint16_t instr) {
                 fflush(stdout);
             }
             break;
+
         case 0x25: // HALT: Halt the program
             printf("HALT\n");
             fflush(stdout);
             exit(0);
             break;
+
         default:
             printf("Unknown TRAP code: 0x%X\n", trapvector);
             break;
@@ -451,7 +459,7 @@ int main(int argc, char *argv[])
             storeRegister(instr);
             break;
         case OP_TRAP:
-            //trap(instr);
+            trap(instr);
             break;
         case OP_RES:
             res(instr);
