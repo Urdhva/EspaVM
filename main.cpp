@@ -56,18 +56,14 @@ private:
     static DWORD fdwMode, fdwOldMode;
 };
 
-HANDLE ConsoleBuffer::hStdin = INVALID_HANDLE_VALUE;
-DWORD ConsoleBuffer::fdwMode = 0;
-DWORD ConsoleBuffer::fdwOldMode = 0;
-
 // Memory operations class
 class Memory {
 public:
-    static void write(uint16_t address, uint16_t val) {
+    static void write(short unsigned int address, short unsigned int val) {
         memory[address] = val;
     }
 
-    static uint16_t read(uint16_t address) {
+    static short unsigned int read(short unsigned int address) {
         if (address == MR_KBSR) {
             if (ConsoleBuffer::checkKey()) {
                 memory[MR_KBSR] = (1 << 15);
@@ -77,13 +73,52 @@ public:
         return memory[address];
     }
 
-    static uint16_t* getMemory() {
+    static short unsigned int* getMemory() {
         return memory;
     }
 
 private:
-    static uint16_t memory[MEMORY_MAX];
+    static short unsigned int memory[MEMORY_MAX];
 };
+
+// LC3 Emulator class
+class LC3Emulator {
+public:
+    static void readImageFile(std::ifstream& file) {
+        short unsigned int origin;
+        file.read(reinterpret_cast<char*>(&origin), sizeof(origin));
+        origin = swap16(origin);
+
+        short unsigned int max_read = MEMORY_MAX - origin;
+        short unsigned int* p = Memory::getMemory() + origin;
+        size_t read = file.read(reinterpret_cast<char*>(p), max_read * sizeof(short unsigned int)).gcount() / sizeof(short unsigned int);
+
+        while (read-- > 0) {
+            *p = swap16(*p);
+            ++p;
+        }
+    }
+
+    static bool readImage(const char* image_path) {
+        std::ifstream file(image_path, std::ios::binary);
+        if (!file) {
+            return false;
+        }
+        readImageFile(file);
+        return true;
+    }
+
+private:
+    static short unsigned int swap16(short unsigned int x) {
+        return (x << 8) | (x >> 8);
+    }
+};
+
+HANDLE ConsoleBuffer::hStdin = INVALID_HANDLE_VALUE;
+DWORD ConsoleBuffer::fdwMode = 0;
+DWORD ConsoleBuffer::fdwOldMode = 0;
+short unsigned int Memory::memory[MEMORY_MAX] = {0};
+
 //END OF MEMORY MANAGEMENT
 //---------------------------------------------------------------------------------------//
 //---------------------------------------------------------------------------------------//
@@ -418,25 +453,23 @@ void trap(short unsigned int instr) {
 //Main code
 int main(int argc, char *argv[])
 {
-    // Initialize memory and registers
-    reg[R_COND] = FL_ZRO;
-    const short unsigned int PC_START = 0x3000;
-    reg[R_PC] = PC_START;
-
-    // Disable input buffering
+    signal(SIGINT, [](int){ ConsoleBuffer::restoreInputBuffering(); exit(0); });
     ConsoleBuffer::disableInputBuffering();
-    if(argc < 2){
-        printf("lc3 [image-file1] ...\n");
-        //causes normal program termination to occur and performs cleanup before exiting
+
+    enum { PC_START = 0x3000 }; // Default starting position
+    short unsigned int reg[10] = {0}; // Register array
+    reg[9] = PC_START; // Program counter starts at default position
+    reg[8] = 1 << 1; // Initial condition flags (ZRO)
+
+    if (argc < 2) {
+        std::cerr << "Usage: lc3 [image-file1] ..." << std::endl;
         exit(2);
     }
-    // Handle image loading here
-    for (int i = 1; i < argc; ++i)
-    {
-        if (!readImage(argv[i]))
-        {
-            std::cerr << "Failed to load image " << argv[i] << std::endl;
-            return 1;
+
+    for (int j = 1; j < argc; ++j) {
+        if (!LC3Emulator::readImage(argv[j])) {
+            std::cerr << "Failed to load image " << argv[j] << std::endl;
+            exit(1);
         }
     }
 
@@ -500,9 +533,10 @@ int main(int argc, char *argv[])
             RTI(instr);
             break;
         default:
-            // @{BAD OPCODE}
+            std::cerr << "Unknown opcode: " << std::hex << op << std::endl;
             break;
         }
     }
     ConsoleBuffer::restoreInputBuffering();
+    return 0;
 }
