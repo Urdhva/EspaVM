@@ -376,9 +376,6 @@ void trap(short unsigned int instr) {
             break;
     }
 }
-
-
-
 //---------------------------------------------------------------------------------------//
 //---------------------------------------------------------------------------------------//
 //---------------------------------------------------------------------------------------//
@@ -398,7 +395,11 @@ int main(int argc, char *argv[])
 
     // Disable input buffering
     ConsoleBuffer::disableInputBuffering();
-
+    if(argc < 2){
+        printf("lc3 [image-file1] ...\n");
+        //causes normal program termination to occur and performs cleanup before exiting
+        exit(2);
+    }
     // Handle image loading here
     for (int i = 1; i < argc; ++i)
     {
@@ -412,6 +413,7 @@ int main(int argc, char *argv[])
     // Main loop
     bool running = true;
     while (running)
+
     {
         // Fetch instruction
         short unsigned int instr = memory[reg[R_PC]++];
@@ -472,4 +474,5 @@ int main(int argc, char *argv[])
             break;
         }
     }
+    ConsoleBuffer::restoreInputBuffering();
 }
