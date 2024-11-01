@@ -34,6 +34,16 @@ uint16_t check_key()
 //unsigned integer of 16 bits
 uint16_t memory[MEMORY_MAX];
 
+enum TRAP_codes
+{
+    TRAP_GETC = 0x20,   //get character from the keyboard, not echoed on the terminal
+    TRAP_OUT = 0x21,
+    TRAP_PUTS = 0x22,
+    TRAP_IN = 0x23,
+    TRAP_PUTSP = 0x24,
+    TRAP_HALT = 0x25
+};
+
 enum Registors
 {
     R_R0 = 0,
@@ -371,15 +381,36 @@ void LEA(uint16_t instr)
 //remember - what we are designging is the architecture
 //not the operating systemn.
 ///we need an operating system for the user to interact with the machine.
-enum TRAP_codes
+
+
+//read image file goes here
+void read_image_file(FILE* file)
 {
-    TRAP_GETC = 0x20,   //get character from the keyboard, not echoed on the terminal
-    TRAP_OUT = 0x21,
-    TRAP_PUTS = 0x22,
-    TRAP_IN = 0x23,
-    TRAP_PUTSP = 0x24,
-    TRAP_HALT = 0x25
-};
+    //the origin tells us where the memory to place the image
+
+    //origin is the first 16 bits of the program which tells us
+    //where the execution of the program starts from
+
+    uint16_t origin;
+    fread(&origin, sizeof(origin), 1, file);
+    origin = swap16(origin);
+
+    uint16_t max_read = MEMORY_MAX - origin;
+    uint16_t* p = memory + origin;
+    size_t read = fread(p, sizeof(uint16_t), max_read, file);
+
+
+    //swap to little endian (whatever that means)
+    while(read-- > 0)
+    {
+        *p = swap16(*p);
+        ++p;
+    }
+}
+
+//read image goes here
+
+//memory access goes here
 
 
 //refer contrl flow screeny for order of functions and loops
