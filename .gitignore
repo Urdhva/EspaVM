@@ -2,6 +2,7 @@ test2.c
 .vscode
 aqua.exe
 ruby.exe
-nami.exe
+test.exe
+main.exe
 control flow.png
 test.cpp
