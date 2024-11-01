@@ -1,8 +1,13 @@
 #include <iostream>
+#include <fstream>
+#include <stdint.h>
+#include <csignal>
 #include <windows.h>
 #include <conio.h>
 //---------------------------------------------------------------------------------------//
 #define MEMORY_MAX (1 << 16)
+#define MR_KBSR 0xFE00 // Keyboard status register address
+#define MR_KBDR 0xFE02 // Keyboard data register address
 // memory management 
 class ConsoleBuffer
 {
@@ -54,6 +59,31 @@ private:
 HANDLE ConsoleBuffer::hStdin = INVALID_HANDLE_VALUE;
 DWORD ConsoleBuffer::fdwMode = 0;
 DWORD ConsoleBuffer::fdwOldMode = 0;
+
+// Memory operations class
+class Memory {
+public:
+    static void write(uint16_t address, uint16_t val) {
+        memory[address] = val;
+    }
+
+    static uint16_t read(uint16_t address) {
+        if (address == MR_KBSR) {
+            if (ConsoleBuffer::checkKey()) {
+                memory[MR_KBSR] = (1 << 15);
+                memory[MR_KBDR] = getchar();
+            }
+        }
+        return memory[address];
+    }
+
+    static uint16_t* getMemory() {
+        return memory;
+    }
+
+private:
+    static uint16_t memory[MEMORY_MAX];
+};
 //END OF MEMORY MANAGEMENT
 //---------------------------------------------------------------------------------------//
 //---------------------------------------------------------------------------------------//
