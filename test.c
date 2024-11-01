@@ -365,9 +365,12 @@ void LEA(uint16_t instr)
 //Instructions end here
 
 
-//All trap routines go here
-//---------------------------------------------------------------------------------------//
-
+//predefined routines to perform common tasks.
+//getting input from the keyboard comes under trap routines
+//something something - similar to an operating system
+//remember - what we are designging is the architecture
+//not the operating systemn.
+///we need an operating system for the user to interact with the machine.
 enum TRAP_codes
 {
     TRAP_GETC = 0x20,   //get character from the keyboard, not echoed on the terminal
@@ -377,47 +380,6 @@ enum TRAP_codes
     TRAP_PUTSP = 0x24,
     TRAP_HALT = 0x25
 };
-
-    //predefined routines to perform common tasks.
-    //getting input from the keyboard comes under trap routines
-    //something something - similar to an operating system
-    //remember - what we are designging is the architecture
-    //not the operating systemn.
-    ///we need an operating system for the user to interact with the machine.
-
-
-void trap_getc()
-{
-    //read single ASCII value
-    reg[R_R0] = (uint16_t)getchar();
-    update_flags(R_R0);
-}
-
-
-//outputs a null terminated string
-//the function is in lower case otherwise we'll get an ambiguity error
-//with the enum codes
-void trap_puts()
-{
-    uint16_t* c = memory + reg[R_R0];
-    while(*c)
-    {
-        putc((char)*c, stdout);
-        ++c;
-    }
-    fflush(stdout);
-}
-
-
-void trap_in()
-{
-
-}
-
-
-
-//---------------------------------------------------------------------------------------//
-//TRAP routines end here
 
 
 //refer contrl flow screeny for order of functions and loops
@@ -509,17 +471,48 @@ int main()
                 switch(instr & 0xFF)
                 {
                     case TRAP_GETC:
-                    break;
+                        //read single ASCII value
+                        reg[R_R0] = (uint16_t)getchar();
+                        update_flags(R_R0);
+                        break;
                     case TRAP_OUT:
-                    break;
+                        putc((char)reg[R_R0], stdout);
+                        fflush(stdout);
+                        break;
                     case TRAP_PUTS:
-                    break;
-                    case TRAP_IN: 
-                    break;
+                        uint16_t* c = memory + reg[R_R0];
+                        while(*c)
+                        {
+                            putc((char)*c, stdout);
+                            ++c;
+                        }
+                        fflush(stdout);
+                        break;
+                    case TRAP_IN:
+                        printf("Enter a characters: ");
+                        char c = getchar();
+                        putc(c, stdout);
+                        fflush(stdout);
+                        reg[R_R0] = (uint16_t)c;
+                        update_flags(R_R0); 
+                        break;
                     case TRAP_PUTSP:
-                    break;
+                        uint16_t* c = memory + reg[R_R0];
+                        while(*c)
+                        {
+                            char char1 = (*c) & 0xFF;
+                            putc(char1, stdout);
+                            char char2 = (*c) >> 8;
+                            if (char2) putc(char2, stdout);
+                            ++c;
+                        }
+                        fflush(stdout);
+                        break;
                     case TRAP_HALT:
-                    break;
+                        puts("HALT");
+                        fflush(stdout);
+                        running = 0;
+                        break;
                 }
                 break;
             case OP_RES:
