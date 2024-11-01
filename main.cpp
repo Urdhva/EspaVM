@@ -87,7 +87,7 @@ enum Opcodes
     OP_AND,     //bitwsie and       done
     OP_LDR,     //load registor     done
     OP_STR,     //store registor    done
-    OP_RTI,     //unusued
+    OP_RTI,     //unusued           done
     OP_NOT,     //bitwise not       done
     OP_LDI,     //load indirect     done
     OP_STI,     //store indirect
