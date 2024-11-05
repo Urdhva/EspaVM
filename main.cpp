@@ -2,13 +2,17 @@
 #include <fstream>
 #include <stdint.h>
 #include <csignal>
+
+#ifdef _WIN32
 #include <windows.h>
 #include <conio.h>
+#endif
 //---------------------------------------------------------------------------------------//
 #define MEMORY_MAX (1 << 16)
 #define MR_KBSR 0xFE00 // Keyboard status register address
 #define MR_KBDR 0xFE02 // Keyboard data register address
 // memory management 
+#ifdef _WIN32
 class ConsoleBuffer
 {
 public:
@@ -55,6 +59,17 @@ private:
     static HANDLE hStdin;
     static DWORD fdwMode, fdwOldMode;
 };
+HANDLE ConsoleBuffer::hStdin = INVALID_HANDLE_VALUE;
+DWORD ConsoleBuffer::fdwMode = 0, ConsoleBuffer::fdwOldMode = 0;
+#else
+class ConsoleBuffer
+{
+public:
+    static void disableInputBuffering() {}
+    static void restoreInputBuffering() {}
+    static bool checkKey() { return false; }
+};
+#endif
 
 // Memory operations class
 class Memory {
@@ -114,10 +129,10 @@ private:
     }
 };
 
-HANDLE ConsoleBuffer::hStdin = INVALID_HANDLE_VALUE;
+/*HANDLE ConsoleBuffer::hStdin = INVALID_HANDLE_VALUE;
 DWORD ConsoleBuffer::fdwMode = 0;
 DWORD ConsoleBuffer::fdwOldMode = 0;
-short unsigned int Memory::memory[MEMORY_MAX] = {0};
+short unsigned int Memory::memory[MEMORY_MAX] = {0};*/
 
 //END OF MEMORY MANAGEMENT
 //---------------------------------------------------------------------------------------//
