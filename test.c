@@ -157,13 +157,10 @@ void mem_write(uint16_t address, uint16_t val);
 
 //conditional branch
 //SELF WRITTEN
-void branch(uint16_t instr)
-{
-    uint16_t pc_offset = sign_extend(instr && 0x1FF, 9);
+void branch(uint16_t instr) {
+    uint16_t pc_offset = sign_extend(instr & 0x1FF, 9);
     uint16_t cond_flag = (instr >> 9) & 0x7;
-
-    if(cond_flag & reg[R_COND])
-    {
+    if(cond_flag & reg[R_COND]) {
         reg[R_PC] += pc_offset;
     }
 }
@@ -475,7 +472,7 @@ uint16_t mem_read(uint16_t address)
 
 //refer contrl flow screeny for order of functions and loops
 // '--->' indicates a snippet defined by the tutorial
-int main()
+int main(int argc, char* argv[])
 {   
     signal(SIGINT, handle_interrupt);
     disable_input_buffering();
