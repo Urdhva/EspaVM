@@ -8,10 +8,10 @@
 #include <conio.h>
 #endif
 //---------------------------------------------------------------------------------------//
-#define MEMORY_MAX (1 << 16)
-#define MR_KBSR 0xFE00 // Keyboard status register address
-#define MR_KBDR 0xFE02 // Keyboard data register address
 // memory management 
+#define MEMORY_MAX (1 << 16)
+#define MR_KBSR 0xFE00 // Keyboard status register
+#define MR_KBDR 0xFE02 // Keyboard data register
 #ifdef _WIN32
 class ConsoleBuffer
 {
@@ -19,40 +19,25 @@ public:
     static void disableInputBuffering()
     {
         hStdin = GetStdHandle(STD_INPUT_HANDLE);
-        if (hStdin == INVALID_HANDLE_VALUE)
+        if (hStdin != INVALID_HANDLE_VALUE && GetConsoleMode(hStdin, &fdwOldMode))
         {
-            std::cerr << "Error: Unable to get standard input handle." << std::endl;
-            return;
-        }
-        if (!GetConsoleMode(hStdin, &fdwOldMode))
-        {
-            std::cerr << "Error: Unable to get console mode." << std::endl;
-            return;
-        }
-        fdwMode = fdwOldMode & ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT);
-        if (!SetConsoleMode(hStdin, fdwMode))
-        {
-            std::cerr << "Error: Unable to set console mode." << std::endl;
-            return;
-        }
-        if (!FlushConsoleInputBuffer(hStdin))
-        {
-            std::cerr << "Error: Unable to flush console input buffer." << std::endl;
+            fdwMode = fdwOldMode & ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT);
+            SetConsoleMode(hStdin, fdwMode);
+            FlushConsoleInputBuffer(hStdin);
         }
     }
 
     static void restoreInputBuffering()
     {
-        if (!SetConsoleMode(hStdin, fdwOldMode))
+        if (hStdin != INVALID_HANDLE_VALUE)
         {
-            //similar to the c version, only with an error handling statement
-            std::cerr << "Error: Unable to restore console mode." << std::endl;
+            SetConsoleMode(hStdin, fdwOldMode);
         }
     }
 
-    static short int checkKey()
+    static bool checkKey()
     {
-        return (WaitForSingleObject(hStdin, 1000) == WAIT_OBJECT_0 && _kbhit()) ? 1 : 0;
+        return WaitForSingleObject(hStdin, 1000) == WAIT_OBJECT_0 && _kbhit();
     }
 
 private:
@@ -72,15 +57,27 @@ public:
 #endif
 
 // Memory operations class
-class Memory {
+class Memory
+{
 public:
-    static void write(short unsigned int address, short unsigned int val) {
-        memory[address] = val;
+    static void write(short unsigned int address, short unsigned int val)
+    {
+        if (address < MEMORY_MAX)
+        {
+            memory[address] = val;
+        }
+        else
+        {
+            std::cerr << "Error: Invalid memory address: " << std::hex << address << std::endl;
+        }
     }
 
-    static short unsigned int read(short unsigned int address) {
-        if (address == MR_KBSR) {
-            if (ConsoleBuffer::checkKey()) {
+    static short unsigned int read(short unsigned int address)
+    {
+        if (address == MR_KBSR)
+        {
+            if (ConsoleBuffer::checkKey())
+            {
                 memory[MR_KBSR] = (1 << 15);
                 memory[MR_KBDR] = getchar();
             }
@@ -88,35 +85,28 @@ public:
         return memory[address];
     }
 
-    static short unsigned int* getMemory() {
+    // Returns a pointer to the memory array (used by LC3Emulator for file loading)
+    static short unsigned int *getMemory()
+    {
         return memory;
     }
 
 private:
     static short unsigned int memory[MEMORY_MAX];
 };
+short unsigned int Memory::memory[MEMORY_MAX] = {0};
+
 
 // LC3 Emulator class
-class LC3Emulator {
+class LC3Emulator
+{
 public:
-    static void readImageFile(std::ifstream& file) {
-        short unsigned int origin;
-        file.read(reinterpret_cast<char*>(&origin), sizeof(origin));
-        origin = swap16(origin);
-
-        short unsigned int max_read = MEMORY_MAX - origin;
-        short unsigned int* p = Memory::getMemory() + origin;
-        size_t read = file.read(reinterpret_cast<char*>(p), max_read * sizeof(short unsigned int)).gcount() / sizeof(short unsigned int);
-
-        while (read-- > 0) {
-            *p = swap16(*p);
-            ++p;
-        }
-    }
-
-    static bool readImage(const char* image_path) {
+    static bool readImage(const char *image_path)
+    {
         std::ifstream file(image_path, std::ios::binary);
-        if (!file) {
+        if (!file)
+        {
+            std::cerr << "Failed to load image " << image_path << std::endl;
             return false;
         }
         readImageFile(file);
@@ -124,9 +114,24 @@ public:
     }
 
 private:
-    static short unsigned int swap16(short unsigned int x) {
-        return (x << 8) | (x >> 8);
+    static void readImageFile(std::ifstream &file)
+    {
+        short unsigned int origin;
+        file.read(reinterpret_cast<char *>(&origin), sizeof(origin));
+        origin = swap16(origin);
+
+        short unsigned int max_read = MEMORY_MAX - origin;
+        short unsigned int *p = Memory::getMemory() + origin;
+        size_t read = file.read(reinterpret_cast<char *>(p), max_read * sizeof(short unsigned int)).gcount() / sizeof(short unsigned int);
+
+        while (read-- > 0)
+        {
+            *p = swap16(*p);
+            ++p;
+        }
     }
+
+    static short unsigned int swap16(short unsigned int x) { return (x << 8) | (x >> 8); }
 };
 
 /*HANDLE ConsoleBuffer::hStdin = INVALID_HANDLE_VALUE;
@@ -142,7 +147,6 @@ short unsigned int Memory::memory[MEMORY_MAX] = {0};*/
 //---------------------------------------------------------------------------------------//
 //---------------------------------------------------------------------------------------//
 //---------------------------------------------------------------------------------------//
-short unsigned int memory[MEMORY_MAX];
 enum Registors
 {
     R_R0 = 0,
@@ -183,30 +187,20 @@ enum Condition_Flags
     FL_NEG = 1 << 2
 };
 
-short unsigned int reg[R_COUNT];
+short unsigned int reg[R_COUNT] = {0};
 
 void updateFlags(short unsigned int r)
 {
     if (reg[r] == 0)
-    {
         reg[R_COND] = FL_ZRO;
-    }
-    else if (reg[r] >> 15)
-    {
-        reg[R_COND] = FL_NEG;
-    }
     else
-    {
-        reg[R_COND] = FL_POS;
-    }
+        reg[R_COND] = (reg[r] >> 15) ? FL_NEG : FL_POS;
 }
 
 short unsigned int signExtend(short unsigned int x, int bitCount)
 {
     if ((x >> (bitCount - 1)) & 1)
-    {
         x |= (0xFFFF << bitCount);
-    }
     return x;
 }
 //END OF HARDWARE
@@ -221,17 +215,15 @@ short unsigned int signExtend(short unsigned int x, int bitCount)
 //---------------------------------------------------------------------------------------//
 void branch(short unsigned int instr)
 {
-    short unsigned int n = (instr >> 11) & 0x1;// Extract negative flag
-    short unsigned int z = (instr >> 10) & 0x1;// Extract zero flag
-    short unsigned int p = (instr >> 9) & 0x1; // Extract positive flag
-    short unsigned int pcOffset = instr & 0x1FF;// Get 9-bit PC offset
+    short unsigned int pc_offset = signExtend(instr & 0x1FF, 9);
+    short unsigned int cond_flag = (instr >> 9) & 0x7;
     // Check if the condition flags match. The branch is taken if:
     // 1. The 'n' flag in the instruction is set AND the condition register (R_COND) has FL_NEG set, OR
     // 2. The 'z' flag in the instruction is set AND R_COND has FL_ZRO set, OR
     // 3. The 'p' flag in the instruction is set AND R_COND has FL_POS set
-    if ((n && (reg[R_COND] & FL_NEG)) || (z && (reg[R_COND] & FL_ZRO)) || (p && (reg[R_COND] & FL_POS)))
+    if (cond_flag & reg[R_COND])
     {
-        reg[R_PC] += signExtend(pcOffset, 9);// Update the program counter (R_PC) by adding the signed offsets
+        reg[R_PC] += pc_offset;
     }
 }
 //---------------------------------------------------------------------------------------//
@@ -239,30 +231,31 @@ void branch(short unsigned int instr)
 //---------------------------------------------------------------------------------------//
 void add(short unsigned int instr)
 {
-    short unsigned int r0 = (instr >> 9) & 0x7;
-    short unsigned int r1 = (instr >> 6) & 0x7;
-    short unsigned int immFlag = (instr >> 5) & 0x1;
-    if (immFlag)
+    short unsigned int dr = (instr >> 9) & 0x7;
+    short unsigned int sr1 = (instr >> 6) & 0x7;
+    short unsigned int imm_flag = (instr >> 5) & 0x1;
+
+    if (imm_flag)
     {
         short unsigned int imm5 = signExtend(instr & 0x1F, 5);
-        reg[r0] = reg[r1] + imm5;
+        reg[dr] = reg[sr1] + imm5;
     }
     else
     {
-        short unsigned int r2 = instr & 0x7;
-        reg[r0] = reg[r1] + reg[r2];
+        short unsigned int sr2 = instr & 0x7;
+        reg[dr] = reg[sr1] + reg[sr2];
     }
-    updateFlags(r0);
+    updateFlags(dr);
 }
 //---------------------------------------------------------------------------------------//
 //load(c)
 //---------------------------------------------------------------------------------------//
 void load(short unsigned int instr)
 {
-    short unsigned int r0 = (instr >> 9) & 0x7;
-    short unsigned int pcOffset = signExtend(instr & 0x1FF, 9);
-    reg[r0] = memory[reg[R_PC] + pcOffset];
-    updateFlags(r0);
+    short unsigned int dr = (instr >> 9) & 0x7;
+    short unsigned int pc_offset = signExtend(instr & 0x1FF, 9);
+    reg[dr] = Memory::read(reg[R_PC] + pc_offset);
+    updateFlags(dr);
 }
 //---------------------------------------------------------------------------------------//
 //store (c)
@@ -270,8 +263,8 @@ void load(short unsigned int instr)
 void store(short unsigned int instr)
 {
     short unsigned int sr = (instr >> 9) & 0x7;
-    short unsigned int pcOffset = signExtend(instr & 0x1FF, 9);
-    memory[reg[R_PC] + pcOffset] = reg[sr];
+    short unsigned int pc_offset = signExtend(instr & 0x1FF, 9);
+    Memory::write(reg[R_PC] + pc_offset, reg[sr]);
 }
 //---------------------------------------------------------------------------------------//
 //jump to subroutine or jump registor (this has two modes)
@@ -279,15 +272,16 @@ void store(short unsigned int instr)
 void jsr(short unsigned int instr)
 {
     reg[R_R7] = reg[R_PC];
-    short unsigned int flag = (instr >> 11) & 0x1;
+    short unsigned int flag = (instr >> 11) & 1;
     if (flag)
     {
-        short unsigned int baseR = (instr >> 6) & 0x7;
-        reg[R_PC] = reg[baseR];
+        short unsigned int pc_offset = signExtend(instr & 0x7FF, 11);
+        reg[R_PC] += pc_offset;
     }
     else
     {
-        reg[R_PC] += signExtend(instr & 0x7FF, 11);
+        short unsigned int base_r = (instr >> 6) & 0x7;
+        reg[R_PC] = reg[base_r];
     }
 }
 //---------------------------------------------------------------------------------------//
@@ -295,39 +289,43 @@ void jsr(short unsigned int instr)
 //---------------------------------------------------------------------------------------//
 void and_op(short unsigned int instr)
 {
-    short unsigned int r0 = (instr >> 9) & 0x7;
-    short unsigned int r1 = (instr >> 6) & 0x7;
-    short unsigned int immFlag = (instr >> 5) & 0x1;
-    if (immFlag)
+    short unsigned int dr = (instr >> 9) & 0x7;
+    short unsigned int sr1 = (instr >> 6) & 0x7;
+    short unsigned int imm_flag = (instr >> 5) & 0x1;
+
+    if (imm_flag)
     {
         short unsigned int imm5 = signExtend(instr & 0x1F, 5);
-        reg[r0] = reg[r1] & imm5;
+        reg[dr] = reg[sr1] & imm5;
     }
     else
     {
-        short unsigned int r2 = instr & 0x7;
-        reg[r0] = reg[r1] & reg[r2];
+        short unsigned int sr2 = instr & 0x7;
+        reg[dr] = reg[sr1] & reg[sr2];
     }
-    updateFlags(r0);
+    updateFlags(dr);
 }
 //---------------------------------------------------------------------------------------//
 //load base off set
 //---------------------------------------------------------------------------------------//
 void loadRegister(short unsigned int instr)
 {
-    short unsigned int r0 = (instr >> 9) & 0x7;
-    short unsigned int baseR = (instr >> 6) & 0x7;
-    reg[r0] = memory[reg[baseR] + signExtend(instr & 0x3F, 6)];
-    updateFlags(r0);
+    short unsigned int dr = (instr >> 9) & 0x7;
+    short unsigned int base_r = (instr >> 6) & 0x7;
+    short unsigned int offset = signExtend(instr & 0x3F, 6);
+    reg[dr] = Memory::read(reg[base_r] + offset);
+    updateFlags(dr);
 }
+
 //---------------------------------------------------------------------------------------//
 //Store Resistor  Created
 //---------------------------------------------------------------------------------------//
 void storeRegister(short unsigned int instr)
 {
     short unsigned int sr = (instr >> 9) & 0x7;
-    short unsigned int baseR = (instr >> 6) & 0x7;
-    memory[reg[baseR] + signExtend(instr & 0x3F, 6)] = reg[sr];
+    short unsigned int base_r = (instr >> 6) & 0x7;
+    short unsigned int offset = signExtend(instr & 0x3F, 6);
+    Memory::write(reg[base_r] + offset, reg[sr]);
 }
 //---------------------------------------------------------------------------------------//
 //RTI
@@ -341,41 +339,39 @@ void RTI(short unsigned int instr)
 //---------------------------------------------------------------------------------------//
 void not_op(short unsigned int instr)
 {
-    short unsigned int r0 = (instr >> 9) & 0x7;  // Destination register (bits [11:9])
-    short unsigned int r1 = (instr >> 6) & 0x7;  // Source register (bits [8:6])
-    reg[r0] = ~reg[r1];  // Perform bitwise NOT on the value in r1 and store the result in r0
-    updateFlags(r0);  // Update the condition flags based on the result in r0
-    
+    short unsigned int dr = (instr >> 9) & 0x7;
+    short unsigned int sr = (instr >> 6) & 0x7;
+    reg[dr] = ~reg[sr];
+    updateFlags(dr);
 }
 //---------------------------------------------------------------------------------------//
 //load Indirect (c)
 //---------------------------------------------------------------------------------------//
 void loadIndirect(short unsigned int instr)
 {
-    short unsigned int r0 = (instr >> 9) & 0x7;
-    short unsigned int pcOffset = signExtend(instr & 0x1FF, 9);
-    reg[r0] = memory[memory[reg[R_PC] + pcOffset]];
-    updateFlags(r0);
+    short unsigned int dr = (instr >> 9) & 0x7;
+    short unsigned int pc_offset = signExtend(instr & 0x1FF, 9);
+    reg[dr] = Memory::read(Memory::read(reg[R_PC] + pc_offset));
+    updateFlags(dr);
 }
 //---------------------------------------------------------------------------------------//
 //store Indirect (c)
 //---------------------------------------------------------------------------------------//
-void storeIndirect(short unsigned int instr) {
+void storeIndirect(short unsigned int instr){
     // Source register
     short unsigned int sr = (instr >> 9) & 0x7;
     // PC offset
-    short unsigned int pc_offset = signExtend(instr & 0x1FF, 9);
     // Indirect address: read from memory at (PC + offset), then write to memory at that address
-    short unsigned int address = memory[reg[R_PC] + pc_offset];
+    short unsigned int pc_offset = signExtend(instr & 0x1FF, 9);
     // Store the value in sr to memory at the indirect address
-    memory[address] = reg[sr];
+    Memory::write(Memory::read(reg[R_PC] + pc_offset), reg[sr]);
 }
 //---------------------------------------------------------------------------------------//
 // Jump instruction
 //---------------------------------------------------------------------------------------//
 void jmp(short unsigned int instr) {
-    short unsigned int r0 = (instr >> 6) & 0x7; // Base register
-    reg[R_PC] = reg[r0]; // Set PC to the value in the base register
+    short unsigned int base_r = (instr >> 6) & 0x7;
+    reg[R_PC] = reg[base_r];
 }
 //---------------------------------------------------------------------------------------//
 // Reserved instruction (usually a placeholder)
@@ -388,74 +384,44 @@ void res(short unsigned int instr) {
 //---------------------------------------------------------------------------------------//
 void lea(short unsigned int instr) {
     // Get the destination register
-    short unsigned int r0 = (instr >> 9) & 0x7;
+    short unsigned int dr = (instr >> 9) & 0x7;
     // Compute the effective address and store it in the destination register
-    reg[r0] = reg[R_PC] + signExtend(instr & 0x1FF, 9);
+    short unsigned int pc_offset = signExtend(instr & 0x1FF, 9);
+    reg[dr] = reg[R_PC] + pc_offset;
     // Update the condition flags for the destination register
-    updateFlags(r0);
+    updateFlags(dr);
 }
 //---------------------------------------------------------------------------------------//
 // trap
 //---------------------------------------------------------------------------------------//
-void trap(short unsigned int instr) {
-    short unsigned int trapvector = instr & 0xFF; // Mask the lower 8 bits to get the trap vector
-    reg[R_R7] = reg[R_PC]; // Save the current PC to R7
-    switch (trapvector) {
-        case 0x20: // GETC: Read a single character from the keyboard
-            reg[R_R0] = (short unsigned int)getchar();
-            updateFlags(R_R0);
-            break;
-
-        case 0x21: // OUT: Output a character
-            putc((char)reg[R_R0], stdout);
-            fflush(stdout);
-            break;
-
-        case 0x22: // PUTS: Output a string
-            {
-                short unsigned int* c = memory + reg[R_R0];
-                while (*c) {
-                    putc((char)*c, stdout);
-                    ++c;
-                }
-                fflush(stdout);
-            }
-            break;
-
-        case 0x23: // IN: Prompt for a single character input
-            {
-                printf("Enter a character: ");
-                char c = getchar();
-                reg[R_R0] = (short unsigned int)c;
-                updateFlags(R_R0);
-            }
-            break;
-
-        case 0x24: // PUTSP: Output a string of packed characters
-            {
-                short unsigned int* c = memory + reg[R_R0];
-                while (*c) {
-                    char char1 = (*c) & 0xFF;
-                    putc(char1, stdout);
-                    char char2 = (*c) >> 8;
-                    if (char2) putc(char2, stdout);
-                    ++c;
-                }
-                fflush(stdout);
-            }
-            break;
-
-        case 0x25: // HALT: Halt the program
-            printf("HALT\n");
-            fflush(stdout);
-            exit(0);
-            break;
-
-        default:
-            printf("Unknown TRAP code: 0x%X\n", trapvector);
-            break;
+void trap(short unsigned int instr)
+{
+    switch (instr & 0xFF)
+    {
+    case 0x20: // GETC
+        reg[R_R0] = (short unsigned int)getchar();
+        break;
+    case 0x21: // OUT
+        putchar((char)reg[R_R0]);
+        break;
+    case 0x22: // PUTS
+    {
+        short unsigned int *c = Memory::getMemory() + reg[R_R0];
+        while (*c)
+            putchar((char)*c++);
+    }
+    break;
+    case 0x23: // IN
+        std::cout << "Enter a character: ";
+        reg[R_R0] = (short unsigned int)getchar();
+        break;
+    case 0x25: // HALT
+        std::cout << "HALT\n";
+        exit(0);
+        break;
     }
 }
+
 //---------------------------------------------------------------------------------------//
 //---------------------------------------------------------------------------------------//
 //---------------------------------------------------------------------------------------//
@@ -464,39 +430,50 @@ void trap(short unsigned int instr) {
 //---------------------------------------------------------------------------------------//
 //---------------------------------------------------------------------------------------//
 
-
+//refer contrl flow screeny for order of functions and loops
+// '--->' indicates a snippet defined by the tutorial
 //Main code
 int main(int argc, char *argv[])
 {
-    signal(SIGINT, [](int){ ConsoleBuffer::restoreInputBuffering(); exit(0); });
+    signal(SIGINT, [](int)
+           { ConsoleBuffer::restoreInputBuffering(); exit(0); });
     ConsoleBuffer::disableInputBuffering();
 
-    enum { PC_START = 0x3000 }; // Default starting position
-    short unsigned int reg[10] = {0}; // Register array
-    reg[9] = PC_START; // Program counter starts at default position
-    reg[8] = 1 << 1; // Initial condition flags (ZRO)
+    // ---> MEMORY MAPPED REGISTERES
+    //registry number 10 is storingn condition flag zro (1 << 1)
 
-    if (argc < 2) {
+    const short unsigned int PC_START = 0x3000;// Default starting position
+    reg[R_PC] = PC_START;// Program counter starts at default position
+    reg[R_COND] = FL_ZRO;// Initial condition flags (ZRO)
+
+    // ---> READ IMAGE FILE
+    //THE BELOW TO SNIPPETS MIGHT COME UNDER THE WHILE LOOP
+    if (argc < 2)
+    {
         std::cerr << "Usage: lc3 [image-file1] ..." << std::endl;
+        //causes normal program termination to occur and performs cleanup before exiting
         exit(2);
     }
 
-    for (int j = 1; j < argc; ++j) {
-        if (!LC3Emulator::readImage(argv[j])) {
-            std::cerr << "Failed to load image " << argv[j] << std::endl;
+    // ---> READ IMAGE
+    for (int i = 1; i < argc; ++i)
+    {
+        if (!LC3Emulator::readImage(argv[i]))
+        {
             exit(1);
         }
     }
 
-    // Main loop
+    // ---> MAIN LOOP  
     bool running = true;
     while (running)
-
     {
         // Fetch instruction
-        short unsigned int instr = memory[reg[R_PC]++];
+        short unsigned int instr = Memory::read(reg[R_PC]++);
         short unsigned int op = instr >> 12;
 
+        //the order here is different because we go throught the instructions
+        //that are most likely to occur.
         switch (op)
         {
         case OP_ADD:
@@ -549,6 +526,7 @@ int main(int argc, char *argv[])
             break;
         default:
             std::cerr << "Unknown opcode: " << std::hex << op << std::endl;
+            running = false;
             break;
         }
     }
