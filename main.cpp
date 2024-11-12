@@ -46,16 +46,51 @@ private:
 };
 HANDLE ConsoleBuffer::hStdin = INVALID_HANDLE_VALUE;
 DWORD ConsoleBuffer::fdwMode = 0, ConsoleBuffer::fdwOldMode = 0;
+//---------------------------------------------------------------------------------------//
+// Handling for POSIX systems
 #else
+#include <termios.h>
+#include <unistd.h>
+#include <fcntl.h>
 class ConsoleBuffer
 {
 public:
-    static void disableInputBuffering() {}
-    static void restoreInputBuffering() {}
-    static bool checkKey() { return false; }
+    static void disableInputBuffering()
+    {
+        struct termios newt;
+        tcgetattr(STDIN_FILENO, &oldt);  // Get the current terminal settings
+        newt = oldt;                     // Save new terminal settings
+        newt.c_lflag &= ~(ICANON | ECHO);  // Disable canonical mode and echo
+        tcsetattr(STDIN_FILENO, TCSANOW, &newt);  // Apply the new settings immediately
+    }
+
+    static void restoreInputBuffering()
+    {
+        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);  // Restore the old terminal settings (no shit, you wanna use teerminal after/0
+    }
+
+    static bool checkKey()
+    {
+        struct timeval tv = {0};
+        fd_set fds;
+        FD_ZERO(&fds);  // Clear the file descriptor set
+        FD_SET(STDIN_FILENO, &fds);  // Add stdin (file descriptor 0) to the set
+        tv.tv_sec = 0; // Timeout
+        tv.tv_usec = 1000; // Check every 1 millisecond (because yes)
+
+        return select(STDIN_FILENO + 1, &fds, nullptr, nullptr, &tv) > 0;  // Select is used because getchar() halts program
+                                                                           // Since STDIN_FILENO is 0, pass 1 as the first argument
+                                                                           // Not monitoring for write or exceptional conditions, so pass nullptr to dont care.
+    }
+
+private:
+    static struct termios oldt;  // Store original terminal settings
 };
+
+struct termios ConsoleBuffer::oldt;
 #endif
 
+//---------------------------------------------------------------------------------------//
 // Memory operations class
 class Memory
 {
