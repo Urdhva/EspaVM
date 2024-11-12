@@ -27,6 +27,7 @@ Run the emulator with an LC-3 binary image file:
 lc3 [image-file1] ...
 Example:
 lc3 my_program.obj
+lc3 HelloWorld.obj
 
 
 **Controls**

@@ -98,11 +98,23 @@ short unsigned int Memory::memory[MEMORY_MAX] = {0};
 
 
 // LC3 Emulator class
+
+//predefined routines to perform common tasks.
+//getting input from the keyboard comes under trap routines
+//something something - similar to an operating system
+//remember - what we are designging is the architecture
+//not the operating systemn.
+///we need an operating system for the user to interact with the machine.
+
+
+//read image file goes here
 class LC3Emulator
 {
 public:
     static bool readImage(const char *image_path)
     {
+        //read image goes here
+        //'rb' is a mode
         std::ifstream file(image_path, std::ios::binary);
         if (!file)
         {
@@ -116,6 +128,10 @@ public:
 private:
     static void readImageFile(std::ifstream &file)
     {
+        //the origin tells us where the memory to place the image
+
+        //origin is the first 16 bits of the program which tells us
+        //where the execution of the program starts from
         short unsigned int origin;
         file.read(reinterpret_cast<char *>(&origin), sizeof(origin));
         origin = swap16(origin);
@@ -124,6 +140,7 @@ private:
         short unsigned int *p = Memory::getMemory() + origin;
         size_t read = file.read(reinterpret_cast<char *>(p), max_read * sizeof(short unsigned int)).gcount() / sizeof(short unsigned int);
 
+        //swap to little endian (whatever that means)
         while (read-- > 0)
         {
             *p = swap16(*p);
@@ -268,7 +285,7 @@ void store(short unsigned int instr)
 }
 //---------------------------------------------------------------------------------------//
 //jump to subroutine or jump registor (this has two modes)
-//---------------------------------------------------------------------------------------//
+//-------------------------------------AKA--------------------------------------------------//
 void jsr(short unsigned int instr)
 {
     reg[R_R7] = reg[R_PC];
