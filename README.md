@@ -4,3 +4,4 @@ Under construction LC-3 VM
 
 Current Plan:
 Make the *Asteroids* game from Atari somehow run 
+and gui some way
